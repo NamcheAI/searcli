@@ -1,0 +1,35 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: false
+      - run: go test -race ./... && go vet ./...
+      - name: Build macOS archives and real checksums
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -eu
+          case "$VERSION" in v[0-9]*) ;; *) exit 1 ;; esac
+          mkdir -p dist
+          for arch in arm64 amd64; do
+            mkdir -p "dist/$arch"
+            CGO_ENABLED=0 GOOS=darwin GOARCH="$arch" go build -trimpath -ldflags="-s -w -X main.version=$VERSION" -o "dist/$arch/searcli" .
+            cp README.md LICENSE "dist/$arch/"
+            tar -C "dist/$arch" -czf "dist/searcli_${VERSION}_darwin_${arch}.tar.gz" searcli README.md LICENSE
+          done
+          (cd dist && sha256sum *.tar.gz > checksums.txt)
+      - name: Create draft release for human verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: gh release create "$VERSION" dist/*.tar.gz dist/checksums.txt --draft --verify-tag --generate-notes
