@@ -42,3 +42,12 @@ All requested code findings addressed; release remains on HOLD pending re-review
 Final checks: gofmt clean; go test ./... passed (1.426s); go vet ./... exit 0; go test -race ./... passed (2.620s); coverage 79.1%. Native and both macOS architecture binaries rebuilt successfully after source fixes. Native version/account-list smoke passed; invalid list smoke returned JSON and exit 2. Writer failures verified with injected failing writers in regression tests (the attempted /dev/full shell smoke was blocked by macOS before launching the binary and is NOT evidence of CLI handling). Ruby template syntax still OK.
 
 New files: validation.go and review_test.go. Existing auth.go, api.go, main.go, README.md and packaging/README.md updated. No live Google credentials, publication, tap writes or scheduler edits. Legacy mixed-case state from unreleased builds has no automatic migration on case-sensitive filesystems; documented remove/re-add procedure. Other previously documented limitations remain.
+
+## Published experimental v0.1.0
+
+Independent re-review cleared blockers; user authorized source/release/tap publication and confirmed namcheai/tap. Released source commit 09c0afaeaa1d9de766357be5da24d607e804af76. Source CI 38412623073 and tag CI 38412808585 passed on Linux/macOS; Release workflow 38412810219 passed. Public prerelease assets were downloaded and both SHA-256 values verified against checksums.txt. Native arm64 release version output v0.1.0. Homebrew install, test and strict audit passed after formula ordering/version fixes; installed at /opt/homebrew/Cellar/searcli/0.1.0. Homebrew auto-enabled developer mode during tests; restored off afterward. No other packages/taps removed.
+
+arm64 archive SHA-256: 7d7c550e2959b128ddc16b99e229008351094c3e39b32c1e5f437cbf6d803842
+amd64 archive SHA-256: 6eac641d1720aa97a8a5ae7bb5a30409f47da84bd85ab47af869c19d3a4ae0b9
+
+Live Google OAuth/API remains unverified; no credentials or grants used. amd64 release execution, Apple signing/notarization and production readiness are not claimed. Prior entries above are historical pre-publication observations.
