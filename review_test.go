@@ -162,7 +162,7 @@ func TestReviewBrowserCancellationAndProgress(t *testing.T) {
 	old := openBrowser
 	defer func() { openBrowser = old }()
 	p := filepath.Join(t.TempDir(), "client.json")
-	os.WriteFile(p, []byte(`{"installed":{"client_id":"id"}}`), 0600)
+	os.WriteFile(p, []byte(`{"installed":{"client_id":"test.apps.googleusercontent.com","client_secret":"synthetic"}}`), 0600)
 	called := false
 	openBrowser = func(ctx context.Context, u string) error {
 		called = true

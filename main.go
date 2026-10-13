@@ -19,7 +19,8 @@ var version = "dev"
 
 const help = `searcli: read-only Google Search Console CLI (all results are JSON)
 Commands:
-  account add --name NAME --credentials desktop.json
+  credentials set FILE
+  account add --name NAME [--credentials desktop.json]
   account list
   account remove --name NAME
   properties --account NAME
@@ -94,6 +95,18 @@ func run(ctx context.Context, args []string, out, errout io.Writer) int {
 		}
 		return 0
 	}
+	if args[0] == "credentials" {
+		if len(args) != 3 || args[1] != "set" || strings.TrimSpace(args[2]) == "" {
+			return fail(2, errors.New("use credentials set FILE"))
+		}
+		if e := importClient(ctx, args[2]); e != nil {
+			return fail(1, e)
+		}
+		if emit(out, map[string]bool{"credentials_saved": true}) != nil {
+			return 1
+		}
+		return 0
+	}
 	cmd := args[0]
 	args = args[1:]
 	if cmd == "version" {
@@ -116,7 +129,7 @@ func run(ctx context.Context, args []string, out, errout io.Writer) int {
 	switch cmd {
 	case "account add":
 		fs.StringVar(&name, "name", "", "account alias")
-		fs.StringVar(&creds, "credentials", "", "Desktop credentials JSON")
+		fs.StringVar(&creds, "credentials", "", "optional custom Desktop client JSON (overrides imported client)")
 	case "account remove":
 		fs.StringVar(&name, "name", "", "account alias")
 	case "account list":
@@ -138,6 +151,15 @@ func run(ctx context.Context, args []string, out, errout io.Writer) int {
 	if e := fs.Parse(args); e != nil {
 		return fail(2, errors.New("invalid flags; use --help"))
 	}
+	explicitCredentials := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "credentials" {
+			explicitCredentials = true
+		}
+	})
+	if explicitCredentials && strings.TrimSpace(creds) == "" {
+		return fail(2, errors.New("--credentials must name a nonempty file path"))
+	}
 	if fs.NArg() != 0 {
 		return fail(2, errors.New("unexpected positional arguments"))
 	}
@@ -145,8 +167,8 @@ func run(ctx context.Context, args []string, out, errout io.Writer) int {
 	name = strings.ToLower(name)
 	switch cmd {
 	case "account add":
-		if name == "" || creds == "" {
-			return fail(2, errors.New("--name and --credentials required"))
+		if name == "" {
+			return fail(2, errors.New("--name required"))
 		}
 		if e := addAccount(ctx, name, creds, errout); e != nil {
 			return fail(1, e)

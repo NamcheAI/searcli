@@ -19,7 +19,20 @@ go build -trimpath -o bin/searcli .
 bin/searcli --help
 ~~~
 
-## Google setup
+## One-time client import (v0.1.1)
+
+~~~sh
+searcli credentials set /private/path/desktop-client.json
+searcli account add --name work
+~~~
+
+This follows gogcli's documented two-step pattern: gog auth credentials set FILE, then gog auth add ACCOUNT. Reference: https://github.com/openclaw/gogcli#quick-start (MIT license; no implementation code copied).
+
+The import validates a Desktop JSON file and atomically saves only client_id/client_secret under installed in private client.json in searcli's config directory (0600 file, 0700 directory). It never echoes the values. Imported client configuration is not bundled or committed. Public users provide their own client; 1Password can be a source for provisioning a private file but is not a runtime dependency. No OpenClaw service credentials are extracted.
+
+Use account add --name work --credentials FILE for a per-account override. Empty/invalid overrides fail rather than fall back. Accounts keep the client configuration used at authorization in their private token file so replacing the imported default does not break existing refreshes. Existing user token files are untouched. Local plaintext storage is not a keychain; protect the directory and backups. Login requires a same-host browser; live Google consent remains untested.
+
+## Custom Google client setup
 
 1. Create/select a Google Cloud project and enable the **Google Search Console API**.
 2. Configure its OAuth consent screen. For an external app in Testing, add your Google accounts as test users. Testing refresh tokens can expire after seven days; production consent/verification requirements depend on your app configuration.
@@ -33,7 +46,7 @@ searcli account list
 searcli properties --account work
 ~~~
 
-Choose the intended Google account in the browser. Aliases are case-insensitive ASCII names, canonicalized to lowercase for files, locks, snapshots and CLI output; Work and work are the same account. Aliases are local names, not verified email addresses. This unreleased storage format has no legacy migration: if testing an older build on a case-sensitive filesystem, stop all searcli processes and deliberately remove or migrate the old mixed-case file (for example accounts/Work.json) in your private state directory before re-adding the lowercase alias. The repaired account remove command lowercases its input and cannot remove that legacy mixed-case filename. Never overwrite a conflicting lowercase account; fresh installations are unaffected. Only https://www.googleapis.com/auth/webmasters.readonly is requested. Login uses a random IPv4 loopback port, state validation, S256 PKCE and offline refresh. No interactive login is needed for subsequent scheduled commands. The browser must run on the same machine; headless/remote authorization is not implemented. Credentials are configurable per account, not embedded in the binary.
+Choose the intended Google account in the browser. Aliases are case-insensitive ASCII names, canonicalized to lowercase for files, locks, snapshots and CLI output; Work and work are the same account. Aliases are local names, not verified email addresses. This unreleased storage format has no legacy migration: if testing an older build on a case-sensitive filesystem, stop all searcli processes and deliberately remove or migrate the old mixed-case file (for example accounts/Work.json) in your private state directory before re-adding the lowercase alias. The repaired account remove command lowercases its input and cannot remove that legacy mixed-case filename. Never overwrite a conflicting lowercase account; fresh installations are unaffected. Only https://www.googleapis.com/auth/webmasters.readonly is requested. Login uses a random IPv4 loopback port, state validation, S256 PKCE and offline refresh. No interactive login is needed for subsequent scheduled commands. The browser must run on the same machine; headless/remote authorization is not implemented. Custom credentials override the imported default and are persisted privately per account for refresh. No client values or user tokens belong in source or release assets.
 
 Copy the **exact siteUrl** returned by properties, including a URL-prefix property's trailing slash, or sc-domain:example.com. Each command verifies accessible property membership; properties includes Google permissionLevel.
 
@@ -98,3 +111,7 @@ go vet ./...
 Tests use httptest, no live credentials. Live consent/API smoke testing still requires an authorized Google Desktop client and accessible property. CI tests on Linux/macOS. Tag-triggered release builds macOS arm64/amd64 archives and computes real SHA-256 checksums; no release exists merely because this scaffold exists. See packaging/README.md. Source publication has passed independent review; binary releases still require live validation and release approval.
 
 References: [Inspection API](https://developers.google.com/webmaster-tools/v1/urlInspection.index/inspect), [quotas](https://developers.google.com/webmaster-tools/limits), [OAuth desktop apps](https://developers.google.com/identity/protocols/oauth2/native-app), [sitemaps](https://developers.google.com/webmaster-tools/v1/sitemaps/list).
+
+### Credential absence release guard
+
+Release CI checks that no embedded client file/directive or known credential prefixes exist in Go source before archive creation. This is defense in depth, not a comprehensive secret scanner; review all release inputs. Runtime values never enter build inputs.

@@ -34,6 +34,7 @@ type Credentials struct {
 	ClientSecret string `json:"client_secret"`
 }
 type Token struct {
+	ClientRef   string      `json:"client_ref,omitempty"`
 	Access      string      `json:"access_token"`
 	Refresh     string      `json:"refresh_token"`
 	Expiry      time.Time   `json:"expiry"`
@@ -196,7 +197,8 @@ func accessToken(ctx context.Context, name string) (string, error) {
 	if t.Refresh == "" {
 		return "", errors.New("no refresh token; reauthorize account")
 	}
-	t, e = exchange(ctx, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {t.Refresh}}, t.Credentials, t)
+	c := t.Credentials
+	t, e = exchange(ctx, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {t.Refresh}}, c, t)
 	if e != nil {
 		return "", e
 	}
@@ -254,15 +256,9 @@ func addAccount(ctx context.Context, name, credentialsFile string, progress io.W
 	if _, e = os.Stat(p); e == nil {
 		return errors.New("account already exists; remove it before reauthorizing")
 	}
-	b, e := os.ReadFile(credentialsFile)
+	c, e := clientCredentials(ctx, credentialsFile)
 	if e != nil {
-		return errors.New("cannot read Desktop OAuth credentials")
-	}
-	var v struct {
-		Installed Credentials `json:"installed"`
-	}
-	if json.Unmarshal(b, &v) != nil || v.Installed.ClientID == "" {
-		return errors.New("expected Google Desktop OAuth JSON with installed.client_id")
+		return e
 	}
 	ln, e := net.Listen("tcp4", "127.0.0.1:0")
 	if e != nil {
@@ -274,7 +270,7 @@ func addAccount(ctx context.Context, name, credentialsFile string, progress io.W
 	srv := &http.Server{Handler: callback(state, ch), ReadHeaderTimeout: 5 * time.Second}
 	defer srv.Close()
 	go srv.Serve(ln)
-	u := authorizationURL(v.Installed, redirect, state, verifier)
+	u := authorizationURL(c, redirect, state, verifier)
 	if e = emit(progress, map[string]string{"progress": "Complete authorization in your browser (5 minute timeout)."}); e != nil {
 		return errors.New("cannot write authorization progress")
 	}
@@ -286,7 +282,7 @@ func addAccount(ctx context.Context, name, credentialsFile string, progress io.W
 		if code == "" {
 			return errors.New("authorization denied")
 		}
-		t, e := exchange(ctx, url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "code_verifier": {verifier}}, v.Installed, Token{})
+		t, e := exchange(ctx, url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {redirect}, "code_verifier": {verifier}}, c, Token{})
 		if e != nil {
 			return e
 		}

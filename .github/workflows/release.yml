@@ -14,6 +14,8 @@ jobs:
           go-version: '1.23.x'
           cache: false
       - run: go test -race ./... && go vet ./...
+      - name: Verify no embedded credentials
+        run: go test -run TestRepositoryCredentialAbsence ./...
       - name: Build macOS archives and real checksums
         env:
           VERSION: ${{ github.ref_name }}
