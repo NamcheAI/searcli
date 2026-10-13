@@ -1,6 +1,14 @@
 # searcli
 
-A single-binary, read-only Google Search Console CLI. No runtime dependencies or hosted service. **Reviewed release-candidate source; no binary release yet. OAuth/API behavior is mock-tested, not live-Google validated.**
+A single-binary, read-only Google Search Console CLI. No runtime dependencies or hosted service. **Initial experimental release. OAuth/API behavior is mock-tested, not live-Google validated; not a production-readiness claim.**
+
+## Install
+
+```sh
+brew install namcheai/tap/searcli
+```
+
+macOS arm64 and amd64 release archives are provided.
 
 ## Build
 
