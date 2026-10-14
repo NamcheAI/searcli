@@ -1,6 +1,6 @@
 # searcli
 
-A single-binary, read-only Google Search Console CLI. No runtime dependencies or hosted service. **Initial experimental release. OAuth/API behavior is mock-tested, not live-Google validated; not a production-readiness claim.**
+A single-binary, read-only Google Search Console CLI. No runtime dependencies or hosted service. **Initial experimental release. Automated OAuth/API tests use mocks. A user has confirmed successful authentication and property listing after enabling the API; other live workflows are not comprehensively validated. Not a production-readiness claim.**
 
 ## Install
 
@@ -21,6 +21,8 @@ bin/searcli --help
 
 ## One-time client import (v0.1.1)
 
+**Before authenticating:** enable the [Google Search Console API](https://console.cloud.google.com/apis/library/searchconsole.googleapis.com) in the **same Google Cloud project that owns your Desktop OAuth client**. Select that project in the Cloud Console first. Successful OAuth alone does not enable the API.
+
 ~~~sh
 searcli credentials set /private/path/desktop-client.json
 searcli account add --name work
@@ -30,11 +32,11 @@ This follows gogcli's documented two-step pattern: gog auth credentials set FILE
 
 The import validates a Desktop JSON file and atomically saves only client_id/client_secret under installed in private client.json in searcli's config directory (0600 file, 0700 directory). It never echoes the values. Imported client configuration is not bundled or committed. Public users provide their own client; 1Password can be a source for provisioning a private file but is not a runtime dependency. No OpenClaw service credentials are extracted.
 
-Use account add --name work --credentials FILE for a per-account override. Empty/invalid overrides fail rather than fall back. Accounts keep the client configuration used at authorization in their private token file so replacing the imported default does not break existing refreshes. Existing user token files are untouched. Local plaintext storage is not a keychain; protect the directory and backups. Login requires a same-host browser; live Google consent remains untested.
+Use account add --name work --credentials FILE for a per-account override. Empty/invalid overrides fail rather than fall back. Accounts keep the client configuration used at authorization in their private token file so replacing the imported default does not break existing refreshes. Existing user token files are untouched. Local plaintext storage is not a keychain; protect the directory and backups. Login requires a same-host browser.
 
 ## Custom Google client setup
 
-1. Create/select a Google Cloud project and enable the **Google Search Console API**.
+1. Create/select the Google Cloud project that will own your Desktop OAuth client, then enable the [Google Search Console API](https://console.cloud.google.com/apis/library/searchconsole.googleapis.com) **in that same project** before authentication.
 2. Configure its OAuth consent screen. For an external app in Testing, add your Google accounts as test users. Testing refresh tokens can expire after seven days; production consent/verification requirements depend on your app configuration.
 3. Create an OAuth client of type **Desktop app**, download its JSON, and protect that file (chmod 600).
 4. On a desktop with a browser, run:
@@ -58,6 +60,16 @@ searcli account remove --name personal
 ~~~
 
 Sitemaps returns Google's sitemap status JSON, including available errors, warnings, download dates and content counts. Removing an account deletes local credentials only; revoke access separately in your Google account. Existing snapshots remain. Remove/re-add to reauthorize an existing alias.
+
+## Troubleshooting: HTTP 403 after successful OAuth
+
+Successful sign-in does not prove the API is enabled. If Google's underlying error is `SERVICE_DISABLED` or `accessNotConfigured`, enable the [Google Search Console API](https://console.cloud.google.com/apis/library/searchconsole.googleapis.com) in the project that owns the Desktop OAuth client—not merely another project you can access. Allow a few minutes for propagation, then retry:
+
+~~~sh
+searcli properties --account work
+~~~
+
+API disablement alone does **not** require reauthorization. The current CLI reports HTTP 403 but does not expose Google's detailed error reasons; HTTP 403 by itself is not enough to diagnose a disabled API. Other 403 responses can indicate insufficient OAuth scope or Search Console property permissions. If the API is already enabled in the correct project, check the authorized account, required read-only scope and property access rather than repeatedly reauthorizing or assuming API disablement.
 
 ## Daily checks and JSON
 
